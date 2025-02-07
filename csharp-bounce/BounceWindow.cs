@@ -4,14 +4,11 @@ namespace Bounce;
 
 public class BounceWindow : Window
 {
-	readonly List<Ball> Balls = [];
-	readonly List<Label> BallLabels = [];
-	readonly List<List<Label>> TailLabels = [];
-	int BallSpeed { get; set; } = 15;
-	Label Status { get; set; }
-	object TimeOutToken { get; set; }
-	const int MaxSpeed = 50;
-	readonly string[] BallCharacters = { "〇", "◯", "○", "○", "◌", "◌", "◌", "◌", "◌", "◌", "⋅" };
+	private readonly List<Ball> Balls = [];
+	private int BallSpeed { get; set; } = 15;
+	private Label Status { get; set; }
+	private object TimeOutToken { get; set; }
+	private const int MaxSpeed = 50;
 
 	public BounceWindow()
 	{
@@ -19,7 +16,7 @@ public class BounceWindow : Window
 
 		ColorScheme = new ColorScheme()
 		{
-			Normal = Terminal.Gui.Attribute.Make(Color.White, Color.Black)
+			Normal = Terminal.Gui.Attribute.Make(Color.Gray, Color.Black)
 		};
 
 		Status = new Label()
@@ -32,61 +29,34 @@ public class BounceWindow : Window
 			}
 		};
 
-
+		// Add the event handlers
 		KeyPress += HandleKeyPresses;
 		Application.Resized += WindowResized;
 
 		TimeOutToken = ResetTimer();
 
+		// Add the first ball
 		AddBall();
 		Add(Status);
 	}
 
 	private bool UpdateBalls(MainLoop loop)
 	{
-		for (int i = 0; i < Balls.Count; i++)
+		foreach (var ball in Balls)
 		{
-			Balls[i].Update();
-			BallLabels[i].X = Balls[i].Position.X;
-			BallLabels[i].Y = Balls[i].Position.Y;
-			UpdateTails(i);
+			ball.Update();
 		}
-		UpdateStatus();
-		return true;
-	}
 
-	private void UpdateTails(int ball)
-	{
-		for (int i = 0; i < Balls[ball].Tail.Count; i++)
-		{
-			if (TailLabels[ball].Count <= i)
-			{
-				var tailLabel = new Label()
-				{
-					Text = BallCharacters[TailLabels[ball].Count],
-					X = Balls[ball].Tail[i].X,
-					Y = Balls[ball].Tail[i].Y,
-					ColorScheme = Balls[ball].ColorScheme
-				};
-				TailLabels[ball].Add(tailLabel);
-				Add(tailLabel);
-			}
-			else
-			{
-				TailLabels[ball][i].X = Balls[ball].Tail[i].X;
-				TailLabels[ball][i].Y = Balls[ball].Tail[i].Y;
-			}
-		}
+		UpdateStatus();
+
+		return true;
 	}
 
 	private void WindowResized(Application.ResizedEventArgs e)
 	{
-		int currentWidth = Application.Driver.Cols;
-		int currentHeight = Application.Driver.Rows;
-
 		foreach (var b in Balls)
 		{
-			b.UpdateBounds(new Bounds(0, 0, currentHeight - 3, currentWidth - 3));
+			b.UpdateBounds();
 		}
 
 		UpdateStatus();
@@ -96,7 +66,7 @@ public class BounceWindow : Window
 	{
 		int currentWidth = Terminal.Gui.Application.Driver.Cols;
 		int currentHeight = Terminal.Gui.Application.Driver.Rows;
-		Status.Text = $"Width: {currentWidth} - Height: {currentHeight}  - Speed: {BallSpeed} - Balls: {Balls.Count} \n[↑/↓ to change speed, ←/→ to add/remove balls]";
+		Status.Text = $"Width: {currentWidth} - Height: {currentHeight}  - Speed: {BallSpeed} - Balls: {Balls.Count} \n[↑] Decrease Speed [↓] Increase Speed, [←] Remove Ball [→] All Ball";
 	}
 
 	private void HandleKeyPresses(KeyEventEventArgs e)
@@ -137,35 +107,18 @@ public class BounceWindow : Window
 
 	private void AddBall()
 	{
-		int currentWidth = Application.Driver.Cols;
-		int currentHeight = Application.Driver.Rows;
-		var ball = new Ball(new Bounds(0, 0, currentHeight - 3, currentWidth - 3));
+		var ball = new Ball(this);
 		Balls.Add(ball);
 
-		var ballLabel = new Label()
-		{
-			Text = BallCharacters[0],
-			X = ball.Position.X,
-			Y = ball.Position.Y,
-			ColorScheme = ball.ColorScheme
-		};
-		BallLabels.Add(ballLabel);
-		TailLabels.Add([]);
-		Add(ballLabel);
+		Add(ball);
 	}
 
 	private void RemoveBall()
 	{
 		if (Balls.Count > 1)
 		{
-			foreach (var tailLabel in TailLabels[Balls.Count - 1])
-			{
-				Remove(tailLabel);
-			}
-
-			Remove(BallLabels[Balls.Count - 1]);
-			BallLabels.RemoveAt(Balls.Count - 1);
-			TailLabels.RemoveAt(Balls.Count - 1);
+			Balls[Balls.Count - 1].RemoveTail();
+			Remove(Balls[Balls.Count - 1]);
 			Balls.RemoveAt(Balls.Count - 1);
 		}
 	}

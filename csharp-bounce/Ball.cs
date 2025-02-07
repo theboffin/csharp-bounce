@@ -2,30 +2,28 @@ using Terminal.Gui;
 
 namespace Bounce;
 
-
-public class Ball
+public class Ball : Label
 {
-    public Position Position { get; set; }
-    public Position Direction { get; set; }
-    public Bounds Bounds { get; set; }
-    public List<Position> Tail { get; set; } = new List<Position>();
+    public Position Position { get; private set; }
+    public Position Direction { get; private set; }
+    private Window ParentWindow { get; init; }
+    private List<Label> Tail { get; } = [];
+    private const int MaxTailLength = 10;
+    private readonly string[] BallCharacters = ["〇", "◯", "○", "○", "◌", "◌", "◌", "◌", "◌", "◌", "⋅"];
 
-    public ColorScheme ColorScheme { get; set; }
-    const int MaxTailLength = 10;
-
-
-    public Ball(Bounds bounds)
+    public Ball(Window parentWindow)
     {
         var random = new Random();
-        Bounds = bounds;
+        ParentWindow = parentWindow;
+        Text = BallCharacters[0];
 
         // randomly set the starting position and direction
-        Position = new Position(bounds.Left + random.Next(bounds.Right), bounds.Top + random.Next(bounds.Bottom));
+        Position = new Position(1 + random.Next(ParentWindow.Bounds.Right), ParentWindow.Bounds.Top + 1 + random.Next(ParentWindow.Bounds.Bottom));
         Direction = new Position(random.Next(2) == 0 ? -1 : 1, new Random().Next(2) == 0 ? -1 : 1);
 
-        var colors = new List<Color> { Color.BrightRed, Color.BrightGreen, Color.BrightYellow, Color.BrightBlue, Color.BrightMagenta, Color.BrightCyan, Color.White, Color.Blue, Color.Red, Color.Green, Color.Brown, Color.Magenta, Color.Cyan };
+        Color[] colors = [Color.BrightRed, Color.BrightGreen, Color.BrightYellow, Color.BrightBlue, Color.BrightMagenta, Color.BrightCyan, Color.White, Color.Blue, Color.Red, Color.Green, Color.Brown, Color.Magenta, Color.Cyan];
 
-        var randomColor = colors[random.Next(0, colors.Count)];
+        var randomColor = colors[random.Next(0, colors.Length)];
 
         ColorScheme = new ColorScheme()
         {
@@ -35,14 +33,20 @@ public class Ball
 
     public void Update()
     {
-        UpdateTail();
+        UpdateTail(); // Tail now occupies ball position
+
         Position = new Position(Position.X + Direction.X, Position.Y + Direction.Y);
 
-        if (!Bounds.IsInHorizontalBounds(Position))
+        // update label coordinates
+        X = Position.X;
+        Y = Position.Y;
+
+        // change direction if ball is at an edge
+        if (Position.X <= ParentWindow.Bounds.Left || Position.X >= ParentWindow.Bounds.Right - 2)
         {
             Direction = new Position(Direction.X * -1, Direction.Y);
         }
-        if (!Bounds.IsInVerticalBounds(Position))
+        if (Position.Y <= ParentWindow.Bounds.Top || Position.Y >= ParentWindow.Bounds.Bottom - 2)
         {
             Direction = new Position(Direction.X, Direction.Y * -1);
         }
@@ -50,24 +54,66 @@ public class Ball
 
     private void UpdateTail()
     {
-        Tail.Insert(0, Position);
-        if (Tail.Count > MaxTailLength)
+        // Grow tail to ultimate length
+        if (Tail.Count < MaxTailLength)
         {
-            Tail.RemoveAt(Tail.Count - 1);
+            var tailLabel = new Label()
+            {
+                X = Position.X,
+                Y = Position.Y,
+                Text = BallCharacters[Tail.Count + 1],
+                ColorScheme = ColorScheme
+            };
+            ParentWindow.Add(tailLabel);
+            Tail.Add(tailLabel);
+        }
+
+        // Move tail
+        for (int i = Tail.Count - 1; i > 0; i--)
+        {
+            Tail[i].X = Tail[i - 1].X;
+            Tail[i].Y = Tail[i - 1].Y;
+        }
+
+        // set start of the tail to where the ball currently is
+        Tail[0].X = Position.X;
+        Tail[0].Y = Position.Y;
+    }
+
+    public void UpdateBounds()
+    {
+        if (Position.X <= ParentWindow.Bounds.Left)
+        {
+            Position = new Position(ParentWindow.Bounds.Left, Position.Y);
+            X = Position.X;
+            Y = Position.Y;
+        }
+        if (Position.Y <= ParentWindow.Bounds.Top)
+        {
+            Position = new Position(Position.X, ParentWindow.Bounds.Top);
+            X = Position.X;
+            Y = Position.Y;
+        }
+        if (Position.X > ParentWindow.Bounds.Right - 3)
+        {
+            Position = new Position(ParentWindow.Bounds.Right - 3, Position.Y);
+            X = Position.X;
+            Y = Position.Y;
+        }
+        if (Position.Y > ParentWindow.Bounds.Bottom - 3)
+        {
+            Position = new Position(Position.X, ParentWindow.Bounds.Bottom - 3);
+            X = Position.X;
+            Y = Position.Y;
         }
     }
 
-    public void UpdateBounds(Bounds bounds)
+    public void RemoveTail()
     {
-        Bounds = bounds;
-
-        if (Position.X > Bounds.Right)
+        foreach (var tail in Tail)
         {
-            Position = new Position(Bounds.Right, Position.Y);
+            ParentWindow.Remove(tail);
         }
-        if (Position.Y > Bounds.Bottom)
-        {
-            Position = new Position(Position.X, Bounds.Bottom);
-        }
+        Tail.Clear();
     }
 }

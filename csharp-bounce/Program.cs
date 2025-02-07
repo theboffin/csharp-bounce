@@ -1,7 +1,8 @@
 ﻿using Terminal.Gui;
 using Bounce;
 
-//Application.QuitKey = Key.Esc;
+Application.Init();
+Application.UngrabMouse();
 Application.Run<BounceWindow>();
 Application.Shutdown();
 
