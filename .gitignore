@@ -2,3 +2,4 @@ csharp-bounce/obj/*
 csharp-bounce/.DS_Store
 .DS_Store
 csharp-bounce/bin/*
+.vs/*
